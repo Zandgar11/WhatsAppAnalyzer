@@ -13,7 +13,7 @@
 
 <div class="window main-window">
     <div class="title-bar">
-        <div class="title-bar-text">WinWhatsApp Stats v5.0</div>
+        <div class="title-bar-text">WinWhatsApp Stats v5.0 - Web Analyzer</div>
         <div class="title-bar-controls">
             <button aria-label="Minimize"></button>
             <button aria-label="Maximize"></button>
@@ -27,7 +27,7 @@
                 <p>Sélectionnez votre export WhatsApp (.txt) :</p>
                 <input type="file" id="fileInput" accept=".txt" style="display:none">
                 <button id="btnUpload">Choisir un fichier</button>
-                <span id="fileName" style="margin-left:10px; font-style:italic;">Aucun fichier</span>
+                <span id="fileName" style="margin-left:10px; font-style:italic;">Aucun fichier choisi</span>
                 <p id="status" style="margin-top:5px;">Statut: Prêt.</p>
             </div>
         </div>
@@ -48,37 +48,37 @@
                             <legend>Global Metrics</legend>
                             <div id="globalMetrics" style="line-height: 1.5;"></div>
                         </fieldset>
-                        <div class="canvas-container" style="margin-top:10px;">
+                        <div class="canvas-container" style="margin-top:10px; height: 300px;">
                             <canvas id="pieChart"></canvas>
                         </div>
                     </div>
 
                     <div class="tab-pane hidden" id="pane-profiles">
                         <div class="tabs-nested">
-                            <p>Cliquez sur un membre :</p>
-                            <menu role="tablist" id="userTabsList" style="flex-wrap: wrap; gap: 2px;"></menu>
-                            <div id="userPaneContent" style="padding: 15px; border: 1px solid #808080; background: #fff; margin-top:5px; min-height: 150px;">
-                                <i>Sélectionnez un utilisateur pour voir ses stats.</i>
+                            <p>Membres détectés :</p>
+                            <menu role="tablist" id="userTabsList" style="flex-wrap: wrap; gap: 2px; margin-bottom: 10px;"></menu>
+                            <div id="userPaneContent" style="padding: 15px; border: 1px solid #808080; background: #fff; min-height: 150px; color: black;">
+                                <i>Sélectionnez un membre pour charger ses statistiques.</i>
                             </div>
                         </div>
                     </div>
 
                     <div class="tab-pane hidden" id="pane-heat">
                         <div id="activityHeatmap" style="background:white; color: black; border: 1px solid #808080; padding: 5px;"></div>
-                        <p style="font-size: 10px; color: #555; margin-top: 5px;">* Les zones plus foncées indiquent les pics d'activité.</p>
+                        <p style="font-size: 10px; color: #555; margin-top: 5px;">* Plus la case est foncée, plus l'activité a été intense à cette heure précise.</p>
                     </div>
 
                     <div class="tab-pane hidden" id="pane-podium">
                         <div class="field-row" style="margin-bottom:10px;">
                             <label for="podiumSelector">Classer par :</label>
                             <select id="podiumSelector" style="width: 150px;">
-                                <option value="Messages">Top Messages</option>
-                                <option value="Variety">Top Mots/Msg</option>
-                                <option value="Shouts">Top Cris (!)</option>
+                                <option value="Messages">Volume de messages</option>
+                                <option value="Variety">Moyenne de mots/msg</option>
+                                <option value="Shouts">Cris et Excitation (!)</option>
                             </select>
                         </div>
                         <fieldset>
-                            <legend>Classement des 5 meilleurs</legend>
+                            <legend>Top 5 des contributeurs</legend>
                             <ul id="podiumContent" class="podium-list"></ul>
                         </fieldset>
                     </div>
@@ -96,16 +96,16 @@
         pieChartInst: null,
 
         init() {
-            // Mapping des boutons
+            // Événements d'upload
             document.getElementById('btnUpload').onclick = () => document.getElementById('fileInput').click();
             document.getElementById('fileInput').onchange = (e) => this.handleFile(e);
             
-            // Switch d'onglets
+            // Événements d'onglets
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.onclick = () => this.switchTab(btn);
             });
 
-            // Changement de critère podium
+            // Événement podium
             document.getElementById('podiumSelector').onchange = () => this.renderPodium();
         },
 
@@ -114,7 +114,7 @@
             if (!file) return;
             
             document.getElementById('fileName').innerText = file.name;
-            document.getElementById('status').innerText = "Analyse en cours...";
+            document.getElementById('status').innerText = "Traitement des données...";
             
             const engine = new RetroEngine();
             engine.loadFile(file, () => {
@@ -126,11 +126,9 @@
         },
 
         switchTab(btn) {
-            // UI des boutons
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            // Visibilité des panneaux
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
             const target = document.getElementById(btn.dataset.target);
             if (target) target.classList.remove('hidden');
@@ -147,9 +145,9 @@
         renderGlobal() {
             const stats = window.engine.getGlobalStats();
             document.getElementById('globalMetrics').innerHTML = `
-                • <b>Volume Total :</b> ${stats.total} messages analysés<br>
-                • <b>Contenu Média :</b> ${stats.media} (images/vidéos/audios)<br>
-                • <b>Durée de la conversation :</b> ${stats.timespan} jours
+                • <b>Messages totaux :</b> ${stats.total}<br>
+                • <b>Contenu Multimédia :</b> ${stats.media}<br>
+                • <b>Période couverte :</b> ${stats.timespan} jours
             `;
         },
 
@@ -173,11 +171,12 @@
                 options: { 
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' },
+                        legend: { position: 'right' },
                         title: { 
                             display: true, 
-                            text: 'RÉPARTITION DU VOLUME PAR MEMBRE', 
-                            font: { size: 14, weight: 'bold' } 
+                            text: 'PARTICIPATION PAR MEMBRE (%)', 
+                            font: { size: 12, weight: 'bold' },
+                            padding: { bottom: 20 }
                         }
                     }
                 }
@@ -197,12 +196,12 @@
                     content.innerHTML = `
                         <h4 style="margin-top:0; color: #000080;">${user}</h4>
                         <hr>
-                        <div style="line-height: 1.8;">
-                            • <b>Messages envoyés :</b> ${s.total}<br>
-                            • <b>Moyenne de mots par message :</b> ${s.avgWords}<br>
-                            • <b>Utilisation de points d'exclamation (!) :</b> ${s.shouts}<br>
-                            • <b>Activité nocturne (0h-6h) :</b> ${s.nightOwl} messages
-                        </div>
+                        <ul style="list-style-type: square; padding-left: 20px;">
+                            <li><b>Total envoyé :</b> ${s.total} messages</li>
+                            <li><b>Éloquence :</b> ${s.avgWords} mots en moyenne</li>
+                            <li><b>Niveau de cris (!) :</b> ${s.shouts} occurrences</li>
+                            <li><b>Messages nocturnes (0h-6h) :</b> ${s.nightOwl}</li>
+                        </ul>
                     `;
                     list.querySelectorAll('button').forEach(b => b.style.fontWeight = 'normal');
                     btn.style.fontWeight = 'bold';
@@ -213,52 +212,36 @@
         },
 
         renderHeatmap() {
-            // On récupère les données formatées par le moteur
             const data = window.engine.getHeatmapData();
             const chartDiv = document.getElementById('activityHeatmap');
-            
-            // Crucial : Nettoyer la zone avant de redessiner pour éviter les superpositions
             chartDiv.innerHTML = ''; 
 
             new ApexCharts(chartDiv, {
                 series: data,
                 chart: { 
                     type: 'heatmap', 
-                    height: 350, // On garde une bonne hauteur pour la lisibilité
-                    toolbar: { show: false } // Pour garder le look épuré Windows 98
+                    height: 350, 
+                    toolbar: {show: false} 
                 },
                 plotOptions: {
                     heatmap: {
                         shadeIntensity: 0.5,
                         colorScale: { 
-                            // --- LA CORRECTION EST ICI ---
-                            // On retire la propriété 'ranges' qui figeait les couleurs.
-                            // À la place, on laisse ApexCharts gérer le dégradé.
-                            // -----------------------------
-                            min: 0, // Optionnel : pour forcer le début du dégradé à zéro
+                            // Le dégradé automatique se basera sur la couleur de 'colors'
+                            min: 0,
                             colors: [
-                                { from: 0, to: 0, color: '#f0f0f0' }, // Pour garder le gris très clair quand il n'y a pas de message
+                                { from: 0, to: 0, color: '#f0f0f0' } // Case vide = Gris Windows
                             ]
                         }
                     }
                 },
-                // On force la couleur de base pour le dégradé automatique (du gris clair au bleu foncé)
-                colors: ["#000080"], 
-                dataLabels: { enabled: false }, // Les nombres sur les cases chargeraient trop le graphique
-                title: { 
-                    text: 'INTENSITÉ DES MESSAGES (HEURES VS JOURS)', 
-                    align: 'center',
-                    style: { color: '#000' } // Pour bien ressortir sur le fond gris Windows 98
-                },
-                xaxis: { 
-                    type: 'category', 
-                    title: { text: 'Heures de la journée' } 
-                },
-                yaxis: { 
-                    title: { text: 'Jours' } // Inversé pour avoir Lundi en haut
-                }
+                colors: ["#000080"], // Couleur de base (Bleu Win98)
+                dataLabels: { enabled: false },
+                title: { text: 'CONCENTRATION DE L\'ACTIVITÉ (HEURES / JOURS)', align: 'center' },
+                xaxis: { title: { text: 'Tranches horaires' } },
+                yaxis: { title: { text: 'Jours' } }
             }).render();
-        }
+        },
 
         renderPodium() {
             const crit = document.getElementById('podiumSelector').value;
