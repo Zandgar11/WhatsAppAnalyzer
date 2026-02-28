@@ -1,8 +1,27 @@
-body { background-color: #4e7474; padding: 10px; }
-.main-window { max-width: 800px; margin: auto; }
-.hidden { display: none !important; }
+/* --- Corps de la page --- */
+html, body {
+    height: 100%;             /* nécessaire pour le centrage vertical */
+    margin: 0;
+    display: flex;
+    justify-content: center;  /* centre horizontalement */
+    align-items: center;      /* centre verticalement */
+    background-color: #4e7474;
+    padding: 10px;
+}
 
-/* Correction du bug des onglets 98.css */
+/* --- Fenêtre principale --- */
+.main-window {
+    max-width: 800px;
+    width: 100%;              /* responsive */
+    /* margin: auto; <-- plus nécessaire avec flex */
+}
+
+/* --- Éléments masqués --- */
+.hidden {
+    display: none !important;
+}
+
+/* --- Correction bug onglets 98.css --- */
 menu[role="tablist"] {
     padding-left: 5px;
 }
@@ -23,6 +42,7 @@ menu[role="tablist"] {
     margin-top: -1px; /* Colle la fenêtre aux onglets */
 }
 
+/* --- Conteneur graphique --- */
 .canvas-container {
     height: 250px;
     background: white;
@@ -30,7 +50,21 @@ menu[role="tablist"] {
     margin-top: 10px;
 }
 
-.podium-list { list-style: none; padding: 0; }
-.podium-list li { padding: 5px; border-bottom: 1px dotted #808080; }
+/* --- Liste du podium --- */
+.podium-list {
+    list-style: none;
+    padding: 0;
+}
 
-.file-zone { border: 2px solid #fff; box-shadow: inset 1px 1px #808080; background: #eee; text-align: center; }
+.podium-list li {
+    padding: 5px;
+    border-bottom: 1px dotted #808080;
+}
+
+/* --- Zone de fichier --- */
+.file-zone {
+    border: 2px solid #fff;
+    box-shadow: inset 1px 1px #808080;
+    background: #eee;
+    text-align: center;
+}
