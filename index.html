@@ -5,7 +5,6 @@
     <title>WinWhatsApp 98 - Analysis Suite</title>
     <link rel="stylesheet" href="https://unpkg.com/98.css">
     <link rel="stylesheet" href="style.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
@@ -57,24 +56,25 @@
                         <div class="tabs-nested">
                             <p>Membres détectés :</p>
                             <menu role="tablist" id="userTabsList" style="flex-wrap: wrap; gap: 2px; margin-bottom: 10px;"></menu>
-                            <div id="userPaneContent" style="padding: 15px; border: 1px solid #808080; background: #fff; min-height: 150px; color: black;">
-                                <i>Sélectionnez un membre pour charger ses statistiques.</i>
+                            <div id="userPaneContent" style="padding: 15px; border: 1px solid #808080; background: #fff; min-height: 200px; color: black; overflow-y: auto;">
+                                <i>Sélectionnez un membre.</i>
                             </div>
                         </div>
                     </div>
 
                     <div class="tab-pane hidden" id="pane-heat">
                         <div id="activityHeatmap" style="background:white; color: black; border: 1px solid #808080; padding: 5px;"></div>
-                        <p style="font-size: 10px; color: #555; margin-top: 5px;">* Plus la case est foncée, plus l'activité a été intense à cette heure précise.</p>
+                        <p style="font-size: 10px; color: #555; margin-top: 5px;">* Plus la case est foncée, plus l'activité a été intense.</p>
                     </div>
 
                     <div class="tab-pane hidden" id="pane-podium">
                         <div class="field-row" style="margin-bottom:10px;">
-                            <label for="podiumSelector">Classer par :</label>
-                            <select id="podiumSelector" style="width: 150px;">
+                            <label>Classer par :</label>
+                            <select id="podiumSelector" style="width: 180px;">
                                 <option value="Messages">Volume de messages</option>
                                 <option value="Variety">Moyenne de mots/msg</option>
                                 <option value="Shouts">Cris et Excitation (!)</option>
+                                <option value="Caps">FULL MAJUSCULES</option>
                             </select>
                         </div>
                         <fieldset>
@@ -90,36 +90,26 @@
 </div>
 
 <script src="engine.js"></script>
-
 <script>
     const ui = {
         pieChartInst: null,
 
         init() {
-            // Événements d'upload
             document.getElementById('btnUpload').onclick = () => document.getElementById('fileInput').click();
             document.getElementById('fileInput').onchange = (e) => this.handleFile(e);
-            
-            // Événements d'onglets
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.onclick = () => this.switchTab(btn);
-            });
-
-            // Événement podium
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.onclick = () => this.switchTab(btn));
             document.getElementById('podiumSelector').onchange = () => this.renderPodium();
         },
 
         handleFile(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
             document.getElementById('fileName').innerText = file.name;
-            document.getElementById('status').innerText = "Traitement des données...";
-            
+            document.getElementById('status').innerText = "Traitement...";
             const engine = new RetroEngine();
             engine.loadFile(file, () => {
                 window.engine = engine;
-                document.getElementById('status').innerText = "Analyse terminée !";
+                document.getElementById('status').innerText = "Terminé !";
                 document.getElementById('results').classList.remove('hidden');
                 this.renderAll();
             });
@@ -128,10 +118,8 @@
         switchTab(btn) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
-            const target = document.getElementById(btn.dataset.target);
-            if (target) target.classList.remove('hidden');
+            document.getElementById(btn.dataset.target).classList.remove('hidden');
         },
 
         renderAll() {
@@ -143,43 +131,25 @@
         },
 
         renderGlobal() {
-            const stats = window.engine.getGlobalStats();
+            const s = window.engine.getGlobalStats();
             document.getElementById('globalMetrics').innerHTML = `
-                • <b>Messages totaux :</b> ${stats.total}<br>
-                • <b>Contenu Multimédia :</b> ${stats.media}<br>
-                • <b>Période couverte :</b> ${stats.timespan} jours
+                • <b>Messages :</b> ${s.total}<br>
+                • <b>Médias :</b> ${s.media}<br>
+                • <b>Jours :</b> ${s.timespan}
             `;
         },
 
         renderPie() {
             const counts = window.engine.getMsgsPerUser();
-            const ctx = document.getElementById('pieChart');
+            const labels = Object.keys(counts);
+            // Génération de couleurs dynamiques (une par personne)
+            const colors = labels.map((_, i) => `hsl(${(i * 360) / labels.length}, 70%, 45%)`);
             
             if (this.pieChartInst) this.pieChartInst.destroy();
-
-            this.pieChartInst = new Chart(ctx, {
+            this.pieChartInst = new Chart(document.getElementById('pieChart'), {
                 type: 'pie',
-                data: {
-                    labels: Object.keys(counts),
-                    datasets: [{ 
-                        data: Object.values(counts), 
-                        backgroundColor: ['#000080', '#800000', '#008000', '#808000', '#008080'],
-                        borderWidth: 1,
-                        borderColor: '#000'
-                    }]
-                },
-                options: { 
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right' },
-                        title: { 
-                            display: true, 
-                            text: 'PARTICIPATION PAR MEMBRE (%)', 
-                            font: { size: 12, weight: 'bold' },
-                            padding: { bottom: 20 }
-                        }
-                    }
-                }
+                data: { labels, datasets: [{ data: Object.values(counts), backgroundColor: colors }] },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
             });
         },
 
@@ -187,21 +157,21 @@
             const list = document.getElementById('userTabsList');
             const content = document.getElementById('userPaneContent');
             list.innerHTML = '';
-            
             window.engine.users.forEach((user, i) => {
                 const btn = document.createElement('button');
                 btn.innerText = user;
                 btn.onclick = () => {
                     const s = window.engine.getUserStats(user);
+                    // On construit la liste des messages répétés (doublons)
+                    const reps = s.repeats.slice(0, 5).map(r => `<li>"${r[0].substring(0,30)}..." <b>(x${r[1]})</b></li>`).join('');
+                    
                     content.innerHTML = `
-                        <h4 style="margin-top:0; color: #000080;">${user}</h4>
-                        <hr>
-                        <ul style="list-style-type: square; padding-left: 20px;">
-                            <li><b>Total envoyé :</b> ${s.total} messages</li>
-                            <li><b>Éloquence :</b> ${s.avgWords} mots en moyenne</li>
-                            <li><b>Niveau de cris (!) :</b> ${s.shouts} occurrences</li>
-                            <li><b>Messages nocturnes (0h-6h) :</b> ${s.nightOwl}</li>
-                        </ul>
+                        <h4 style="margin:0; color:#000080;">${user}</h4><hr>
+                        • Total msgs : <b>${s.total}</b><br>
+                        • Messages en MAJ : <b>${s.caps}</b><br>
+                        • Mots/msg : <b>${s.avgWords}</b> | • Cris (!) : <b>${s.shouts}</b><br><br>
+                        <strong>Top Répétitions (Tics) :</strong>
+                        <ul style="margin-top:5px; font-size:11px;">${reps || "Aucune répétition"}</ul>
                     `;
                     list.querySelectorAll('button').forEach(b => b.style.fontWeight = 'normal');
                     btn.style.fontWeight = 'bold';
@@ -214,45 +184,24 @@
         renderHeatmap() {
             const data = window.engine.getHeatmapData();
             const chartDiv = document.getElementById('activityHeatmap');
-            chartDiv.innerHTML = ''; 
-
+            chartDiv.innerHTML = '';
             new ApexCharts(chartDiv, {
                 series: data,
-                chart: { 
-                    type: 'heatmap', 
-                    height: 350, 
-                    toolbar: {show: false} 
-                },
-                plotOptions: {
-                    heatmap: {
-                        shadeIntensity: 0.5,
-                        colorScale: { 
-                            // Le dégradé automatique se basera sur la couleur de 'colors'
-                            min: 0,
-                            colors: [
-                                { from: 0, to: 0, color: '#f0f0f0' } // Case vide = Gris Windows
-                            ]
-                        }
-                    }
-                },
-                colors: ["#000080"], // Couleur de base (Bleu Win98)
-                dataLabels: { enabled: false },
-                title: { text: 'CONCENTRATION DE L\'ACTIVITÉ (HEURES / JOURS)', align: 'center' },
-                xaxis: { title: { text: 'Tranches horaires' } },
-                yaxis: { title: { text: 'Jours' } }
+                chart: { type: 'heatmap', height: 350, toolbar: {show:false} },
+                plotOptions: { heatmap: { colorScale: { min:0, colors: [{from:0, to:0, color:'#f0f0f0'}] } } },
+                colors: ["#000080"],
+                title: { text: 'INTENSITÉ PAR HEURE' }
             }).render();
         },
 
         renderPodium() {
             const crit = document.getElementById('podiumSelector').value;
             const ranking = window.engine.getRanking(crit);
-            document.getElementById('podiumContent').innerHTML = ranking.map((r, i) => {
-                const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '• ';
-                return `<li>${medal}${r.user} : <b>${r.score}</b></li>`;
-            }).join('');
+            document.getElementById('podiumContent').innerHTML = ranking.map((r, i) => 
+                `<li>${i+1}. ${r.user} : <b>${r.score}</b></li>`
+            ).join('');
         }
     };
-
     ui.init();
 </script>
 </body>

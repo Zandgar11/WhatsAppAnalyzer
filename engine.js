@@ -26,13 +26,16 @@ class RetroEngine {
                 const t = timeStr.split(':');
                 const dt = new Date(d[2], d[1]-1, d[0], t[0], t[1]);
                 
+                // Détection MAJUSCULES (plus de 2 lettres et pas de minuscules)
+                const isCaps = msg.length > 2 && msg === msg.toUpperCase() && /[A-Z]/.test(msg);
+
                 this.data.push({
-                    dt: dt, // CRUCIAL pour le calcul de durée
-                    user,
+                    dt, user, msg,
                     hour: dt.getHours(),
                     day: dt.getDay(), 
-                    words: msg.split(' ').length,
+                    words: msg.split(/\s+/).length,
                     shouts: (msg.match(/!/g) || []).length,
+                    isCaps: isCaps,
                     isMedia: msg.includes("<Médias omis>"),
                     isNight: dt.getHours() < 6
                 });
@@ -63,11 +66,24 @@ class RetroEngine {
     getUserStats(user) {
         const udf = this.data.filter(d => d.user === user);
         const totalMsgs = udf.length;
-        const totalWords = udf.reduce((a, b) => a + b.words, 0);
+        
+        // Calcul des messages répétés (doublons)
+        const counts = {};
+        udf.forEach(m => {
+            if(!m.isMedia && m.msg.trim().length > 1) {
+                counts[m.msg] = (counts[m.msg] || 0) + 1;
+            }
+        });
+        const repeats = Object.entries(counts)
+            .filter(([_, count]) => count > 1)
+            .sort((a, b) => b[1] - a[1]);
+
         return {
             total: totalMsgs,
-            avgWords: totalMsgs > 0 ? Math.round(totalWords / totalMsgs) : 0,
+            avgWords: totalMsgs > 0 ? Math.round(udf.reduce((a,b) => a + b.words, 0) / totalMsgs) : 0,
             shouts: udf.reduce((a, b) => a + b.shouts, 0),
+            caps: udf.filter(d => d.isCaps).length,
+            repeats: repeats,
             nightOwl: udf.filter(d => d.isNight).length
         };
     }
@@ -80,7 +96,7 @@ class RetroEngine {
                 x: hour + 'h',
                 y: this.data.filter(d => d.day === dayIdx && d.hour === hour).length
             }))
-        })).reverse(); // Inverser pour avoir Lundi en haut
+        })).reverse();
     }
 
     getRanking(crit) {
@@ -89,6 +105,7 @@ class RetroEngine {
             let score = s.total;
             if(crit === "Variety") score = s.avgWords;
             if(crit === "Shouts") score = s.shouts;
+            if(crit === "Caps") score = s.caps;
             return { user: u, score };
         });
         return stats.sort((a,b) => b.score - a.score).slice(0, 5);
