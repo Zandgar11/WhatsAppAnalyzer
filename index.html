@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>WinWhatsApp 98 - Analysis Suite</title>
+    <link rel="stylesheet" href="https://unpkg.com/7.css">
+    <link rel="stylesheet" href="https://unpkg.com/98.css">
+    <link rel="stylesheet" href="style.css"> <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> </head>
+<body>
+
+<div class="window main-window">
+    <div class="title-bar">
+        <div class="title-bar-text">WinWhatsApp Stats v5.0 - Web Analyzer</div>
+        <div class="title-bar-controls">
+            <button aria-label="Minimize"></button>
+            <button aria-label="Maximize"></button>
+            <button aria-label="Close"></button>
+        </div>
+    </div>
+
+    <div class="window-body">
+        <menu role="tablist">
+            <li role="tab" aria-selected="true"><a href="#file-tab">File</a></li>
+        </menu>
+
+        <div class="window" role="tabpanel">
+            <div class="window-body file-upload-zone">
+                <p>Sélectionnez votre export WhatsApp (.txt) :</p>
+                <div class="field-row-stacked">
+                    <button id="btnChooseFile">Choisir un fichier</button>
+                    <input type="file" id="fileInput" accept=".txt" style="display:none">
+                    <span id="fileNameDisplay">Aucun fichier choisi</span>
+                </div>
+                <div class="pbar-container hidden" id="pbarContainer">
+                    <div class="pbar-text">Loading...</div>
+                    <div class="pbar" id="pbarInner"></div>
+                </div>
+                <p id="status">Statut: Prêt.</p>
+            </div>
+        </div>
+
+        <div id="results" class="hidden">
+            <div class="tabs">
+                <menu role="tablist">
+                    <li role="tab" id="tab-dash" aria-selected="true"><a>Dashboard</a></li>
+                    <li role="tab" id="tab-profiles"><a>Profiles</a></li>
+                    <li role="tab" id="tab-heat"><a>Heatmap</a></li>
+                    <li role="tab" id="tab-podium"><a>Podium</a></li>
+                </menu>
+
+                <div class="window tab-pane" id="pane-dash" role="tabpanel">
+                    <div class="window-body">
+                        <fieldset>
+                            <legend>Global Metrics</legend>
+                            <div class="stat-grid" id="globalMetrics"></div>
+                        </fieldset>
+                        <fieldset>
+                            <legend>Volume Distribution</legend>
+                            <div class="canvas-container compact-pie">
+                                <canvas id="pieChart"></canvas>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+
+                <div class="window tab-pane hidden" id="pane-profiles" role="tabpanel">
+                    <div class="window-body">
+                        <div class="tabs user-tabs" id="userTabsContainer">
+                            <menu role="tablist" id="userTabsList"></menu>
+                            <div id="userPaneContent"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="window tab-pane hidden" id="pane-heat" role="tabpanel">
+                    <div class="window-body">
+                        <fieldset>
+                            <legend>Activity Heatmap (Peak Hour vs Day)</legend>
+                            <div id="activityHeatmap" class="heatmap-container"></div>
+                        </fieldset>
+                        <fieldset>
+                            <legend>Sentiment & Shout Radar</legend>
+                            <div id="vibeRadar" class="radar-container"></div>
+                        </fieldset>
+                    </div>
+                </div>
+
+                <div class="window tab-pane hidden" id="pane-podium" role="tabpanel">
+                    <div class="window-body">
+                        <fieldset>
+                            <legend>Classement</legend>
+                            <div class="field-row">
+                                <label for="podiumSelector">Select Criterion:</label>
+                                <select id="podiumSelector">
+                                    <option value="Messages">Messages</option>
+                                    <option value="Variety">Avg Words/Msg</option>
+                                    <option value="Spam-O-Meter">Rafales (<10s)</option>
+                                    <option value="Shouts">Cris (!)</option>
+                                </select>
+                            </div>
+                            <ul class="podium-list" id="podiumContent"></ul>
+                        </fieldset>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="engine.js"></script> <script>
+    const app = {
+        engine: null,
+        charts: {},
+        daysOrder: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+
+        init: function() {
+            this.bindEvents();
+        },
+
+        bindEvents: function() {
+            // Gestion du fichier
+            document.getElementById('btnChooseFile').addEventListener('click', () => document.getElementById('fileInput').click());
+            document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileSelect(e));
+
+            // Gestion des onglets principaux
+            document.querySelectorAll('#results [role="tab"]').forEach(tab => {
+                tab.addEventListener('click', () => this.switchTab(tab, 'results'));
+            });
+
+            // Sélecteur de podium
+            document.getElementById('podiumSelector').addEventListener('change', () => this.renderPodium());
+        },
+
+        handleFileSelect: function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('fileNameDisplay').innerText = file.name;
+            document.getElementById('status').innerText = "Parsing...";
+            this.showProgressBar(0);
+            this.engine = new RetroEngine();
+            this.engine.loadFile(file, (progress) => this.showProgressBar(progress), () => this.onFileParsed());
+        },
+
+        showProgressBar: function(progress) {
+            const container = document.getElementById('pbarContainer');
+            const inner = document.getElementById('pbarInner');
+            if(progress < 100) {
+                container.classList.remove('hidden');
+                inner.style.width = progress + '%';
+            } else {
+                container.classList.add('hidden');
+            }
+        },
+
+        onFileParsed: function() {
+            document.getElementById('status').innerText = `Chargé : ${this.engine.count()} messages.`;
+            document.getElementById('results').classList.remove('hidden');
+            this.renderAll();
+        },
+
+        renderAll: function() {
+            this.renderGlobal();
+            this.renderPie();
+            this.renderUserProfiles();
+            this.renderActivityHeatmap();
+            this.renderVibeRadar();
+            this.renderPodium();
+        },
+
+        renderGlobal: function() {
+            const stats = this.engine.getGlobalStats();
+            document.getElementById('globalMetrics').innerHTML = `
+                <div class="field-row">• Messages: <b>${stats.total}</b></div>
+                <div class="field-row">• Membres: <b>${this.engine.users.length}</b></div>
+                <div class="field-row">• Médias: <b>${stats.media}</b></div>
+                <div class="field-row">• Durée: <b>${stats.timespan}</b> jours</div>
+            `;
+        },
+
+        renderPie: function() {
+            const counts = this.engine.getMsgsPerUser();
+            this.destroyChart('pieChart');
+            this.charts['pieChart'] = new Chart(document.getElementById('pieChart'), {
+                type: 'pie',
+                data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: ['#000080', '#800000', '#008000'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10 } } } }
+            });
+        },
+
+        renderUserProfiles: function() {
+            const tabList = document.getElementById('userTabsList');
+            const paneContent = document.getElementById('userPaneContent');
+            tabList.innerHTML = ''; paneContent.innerHTML = '';
+            const allVariety = this.engine.getVocabularyRichness();
+            const allSpam = this.engine.getSpamMetrics();
+
+            this.engine.users.forEach((user, i) => {
+                // Création de l'onglet
+                const li = document.createElement('li');
+                li.setAttribute('role', 'tab');
+                if(i === 0) li.setAttribute('aria-selected', 'true');
+                li.id = `user-tab-${i}`;
+                li.innerHTML = `<a>${user}</a>`;
+                li.addEventListener('click', () => this.switchTab(li, 'userTabsContainer'));
+                tabList.appendChild(li);
+
+                // Création du panneau de contenu
+                const stats = this.engine.getUserStats(user);
+                const variety = allVariety.find(s => s.user === user);
+                const spam = allSpam.find(s => s.user === user);
+
+                const pane = document.createElement('div');
+                pane.id = `user-pane-${i}`;
+                pane.className = i === 0 ? '' : 'hidden';
+                pane.innerHTML = `
+                    <div class="user-stats-content">
+                        <fieldset> <legend>Style</legend>
+                            <div class="field-row">Avg Words/Msg: <b>${variety.variety}</b></div>
+                            <div class="field-row">Cris (!): <b>${stats.shouts}</b></div>
+                        </fieldset>
+                        <fieldset> <legend>Engagement</legend>
+                            <div class="field-row">Spam Rafales (<10s): <b>${spam.spam}</b></div>
+                        </fieldset>
+                    </div>
+                `;
+                paneContent.appendChild(pane);
+            });
+        },
+
+        renderActivityHeatmap: function() {
+            const data = this.engine.getHeatmapData();
+            // Préparation des séries ApexCharts
+            const series = this.daysOrder.map(day => {
+                return { name: day, data: data.filter(d => d.day === day).map(d => { return { x: d.hour + 'h', y: d.count } }) };
+            });
+
+            new ApexCharts(document.getElementById('activityHeatmap'), {
+                series: series, chart: { height: 250, type: 'heatmap', toolbar: { show: false } },
+                dataLabels: { enabled: false }, colors: ["#000080"], xaxis: { labels: { rotate: -90, style: { fontSize: '8px' } } },
+                yaxis: { reversed: true }
+            }).render();
+        },
+
+        renderVibeRadar: function() {
+            const variety = this.engine.getVocabularyRichness();
+            const series = this.engine.users.map(user => {
+                const shouts = this.engine.getUserStats(user).shouts;
+                const varScore = variety.find(v => v.user === user).uniqueRatio;
+                return { name: user, data: [varScore, shouts] };
+            });
+
+            new ApexCharts(document.getElementById('vibeRadar'), {
+                series: series, chart: { height: 250, type: 'radar', toolbar: { show: false } },
+                xaxis: { categories: ['Richness (%)', 'Shouts (!)'] }
+            }).render();
+        },
+
+        renderPodium: function() {
+            const list = document.getElementById('podiumContent');
+            list.innerHTML = '';
+            const crit = document.getElementById('podiumSelector').value;
+            const ranking = this.engine.getPodiumRanking(crit);
+            const icons = ["🥇", "🥈", "🥉"];
+
+            ranking.forEach((u, i) => {
+                list.innerHTML += `<li class="podium-item">${icons[i] || '•'} ${u.user} : <b>${u.score}</b></li>`;
+            });
+        },
+
+        // --- UTILITAIRES ---
+        switchTab: function(tab, containerId) {
+            const id = tab.id.split('-').pop();
+            const container = document.getElementById(containerId);
+            container.querySelectorAll('[role="tabpanel"]').forEach(p => p.classList.add('hidden'));
+            container.querySelector(`[id$="${id}"]`).classList.remove('hidden');
+            container.querySelectorAll('[role="tab"]').forEach(t => t.setAttribute('aria-selected', 'false'));
+            tab.setAttribute('aria-selected', 'true');
+        },
+
+        destroyChart: function(id) {
+            if(this.charts[id]) { this.charts[id].destroy(); }
+        }
+    };
+
+    app.init();
+</script>
+
+</body>
+</html>

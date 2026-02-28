@@ -1,0 +1,27 @@
+body { background-color: #55aaaa; padding: 20px; font-family: 'MS Sans Serif', Arial; }
+.main-window { width: 95%; max-width: 950px; margin: 0 auto; }
+.file-upload-zone { text-align: center; border: 2px solid #808080; padding: 15px; background: white; }
+.hidden { display: none; }
+
+/* Dashboard Pie Chart Compact */
+.compact-pie { max-width: 300px; margin: 0 auto; }
+.canvas-container { background: white; border: 1px solid #808080; margin-top: 10px; padding: 5px; height: 180px; }
+
+/* Profiles */
+.user-tabs { margin-top: 10px; }
+.user-stats-content { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Heatmap & Radar */
+.heatmap-container, .radar-container { background: white; border: 1px solid #808080; margin-top: 10px; }
+.window-body fieldset + fieldset { margin-top: 15px; }
+
+/* Podium */
+.podium-list { list-style: none; padding: 0; margin-top: 10px; }
+.podium-item { margin: 5px 0; padding: 5px; border-bottom: 1px dotted #808080; font-size: 13px; }
+.podium-item:first-child { font-weight: bold; color: #000080; font-size: 14px; }
+
+/* Progress Bar Windows Classic */
+.pbar-container { width: 200px; margin: 10px auto; text-align: left; }
+.pbar { height: 15px; border: 1px solid #808080; background: white; overflow: hidden; }
+.pbar-inner { height: 100%; background: #000080; width: 0%; transition: width 0.1s; }
+.pbar-text { font-size: 9px; margin-bottom: 2px; }
