@@ -213,30 +213,52 @@
         },
 
         renderHeatmap() {
+            // On récupère les données formatées par le moteur
             const data = window.engine.getHeatmapData();
             const chartDiv = document.getElementById('activityHeatmap');
+            
+            // Crucial : Nettoyer la zone avant de redessiner pour éviter les superpositions
             chartDiv.innerHTML = ''; 
 
             new ApexCharts(chartDiv, {
                 series: data,
-                chart: { type: 'heatmap', height: 320, toolbar: {show: false} },
+                chart: { 
+                    type: 'heatmap', 
+                    height: 350, // On garde une bonne hauteur pour la lisibilité
+                    toolbar: { show: false } // Pour garder le look épuré Windows 98
+                },
                 plotOptions: {
                     heatmap: {
                         shadeIntensity: 0.5,
                         colorScale: { 
-                            ranges: [
-                                { from: 0, to: 0, color: '#f0f0f0' }, 
-                                { from: 1, to: 10000, color: '#000080' }
-                            ] 
+                            // --- LA CORRECTION EST ICI ---
+                            // On retire la propriété 'ranges' qui figeait les couleurs.
+                            // À la place, on laisse ApexCharts gérer le dégradé.
+                            // -----------------------------
+                            min: 0, // Optionnel : pour forcer le début du dégradé à zéro
+                            colors: [
+                                { from: 0, to: 0, color: '#f0f0f0' }, // Pour garder le gris très clair quand il n'y a pas de message
+                            ]
                         }
                     }
                 },
-                dataLabels: { enabled: false },
-                title: { text: 'PIC D\'ACTIVITÉ (HEURES VS JOURS)', align: 'center' },
-                xaxis: { title: { text: 'Heures' } },
-                yaxis: { title: { text: 'Jours de la semaine' } }
+                // On force la couleur de base pour le dégradé automatique (du gris clair au bleu foncé)
+                colors: ["#000080"], 
+                dataLabels: { enabled: false }, // Les nombres sur les cases chargeraient trop le graphique
+                title: { 
+                    text: 'INTENSITÉ DES MESSAGES (HEURES VS JOURS)', 
+                    align: 'center',
+                    style: { color: '#000' } // Pour bien ressortir sur le fond gris Windows 98
+                },
+                xaxis: { 
+                    type: 'category', 
+                    title: { text: 'Heures de la journée' } 
+                },
+                yaxis: { 
+                    title: { text: 'Jours' } // Inversé pour avoir Lundi en haut
+                }
             }).render();
-        },
+        }
 
         renderPodium() {
             const crit = document.getElementById('podiumSelector').value;
